@@ -42,7 +42,6 @@ const StudentSubmit = () => {
     try {
       // This endpoint would need to be implemented on your backend
       const response = await axios.get(`http://localhost:5000/api/assignments/${assignmentId}?studentId=${studentId}`);
-      
       if (response.data) {
         setAssignment({
           ...response.data,
