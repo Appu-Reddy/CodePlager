@@ -1,5 +1,14 @@
+from flask import Flask, request, jsonify
 import ast
 from difflib import SequenceMatcher
+
+app = Flask(__name__)
+
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app)
+
 
 def get_ast_node_types(code_text):
     try:
@@ -25,10 +34,7 @@ def get_matching_blocks(code1, code2):
     sm = SequenceMatcher(None, code1, code2)
     return sm.get_matching_blocks()
 
-def combined_similarity(file1_path, file2_path):
-    code1 = open(file1_path).read()
-    code2 = open(file2_path).read()
-
+def combined_similarity(code1, code2):
     ast_score = compare_ast_similarity(code1, code2)
     token_score = compare_token_similarity(code1, code2)
     avg_score = round((ast_score + token_score) / 2, 2)
@@ -37,7 +43,7 @@ def combined_similarity(file1_path, file2_path):
     copied_parts = []
     for match in matches:
         i, j, size = match
-        if size > 10:
+        if size > 20:
             part = code1[i:i+size]
             copied_parts.append(part)
 
@@ -45,17 +51,23 @@ def combined_similarity(file1_path, file2_path):
         "ast_similarity": round(ast_score, 2),
         "token_similarity": round(token_score, 2),
         "final_similarity": avg_score,
-        "copied_sections": copied_parts
+        "copied_sections" : copied_parts,
     }
 
+@app.route('/')
+def check_active():
+    return jsonify({"status":"active"}), 200
 
-result = combined_similarity(
-    "C:/Users/papur/Desktop/H/CodePlager/backend/two_code/s1.py",
-    "C:/Users/papur/Desktop/H/CodePlager/backend/two_code/s3.py"
-)
+@app.route('/compare', methods=['POST'])
+def compare_files():
+    if 'file1' not in request.files or 'file2' not in request.files:
+        return jsonify({"error": "Both files are required"}), 400
 
-print("Similarity Summary:", result["final_similarity"], "%")
-print("Copied Code Sections:")
-for section in result["copied_sections"]:
-    print("-" * 30)
-    print(section)
+    file1 = request.files['file1'].read().decode('utf-8')
+    file2 = request.files['file2'].read().decode('utf-8')
+
+    result = combined_similarity(file1, file2)
+    return jsonify(result)
+
+if __name__ == '__main__':
+    app.run(debug=True)

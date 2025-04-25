@@ -1,39 +1,78 @@
 "use client"
 
 import React, { useState } from 'react';
-import { Upload, Copy, FileText, AlertCircle } from 'lucide-react';
+import { Upload, FileText, AlertCircle } from 'lucide-react';
 
 const TwoCode = () => {
   const [leftFile, setLeftFile] = useState<File | null>(null);
   const [rightFile, setRightFile] = useState<File | null>(null);
+  const [result, setResult] = useState<null | {
+    ast_similarity: number;
+    token_similarity: number;
+    final_similarity: number;
+    copied_sections?: string[];  // Make this optional with ?
+  }>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLeftFileChange = (e) => {
-    if (e.target.files.length > 0) {
-      setLeftFile(e.target.files[0]);
+  const handleLeftFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setLeftFile(files[0]);
     }
   };
-
-  const handleRightFileChange = (e) => {
-    if (e.target.files.length > 0) {
-      setRightFile(e.target.files[0]);
+  
+  const handleRightFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setRightFile(files[0]);
     }
   };
+  
+  const handleCopyStatus = async () => {
+    if (!leftFile || !rightFile) {
+      alert("Please upload both files first.");
+      return;
+    }
 
-  const handleCopyStatus = () => {
-    alert("Button clicked");
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    const formData = new FormData();
+    formData.append("file1", leftFile);
+    formData.append("file2", rightFile);
+
+    try {
+      const res = await fetch("http://127.0.0.1:5000/compare", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        throw new Error("API request failed");
+      }
+
+      const data = await res.json();
+      setResult(data);
+    } catch (err) {
+      setError("Failed to analyze files. Make sure the backend is running."+ err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 p-8 flex flex-col items-center">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">File Comparison Tool</h1>
-      
+
       <div className="w-full flex flex-col md:flex-row gap-6 mb-8">
+        {/* File One Upload */}
         <div className="flex-1 bg-white rounded-lg shadow-md p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-700">File One</h2>
             <FileText className="text-blue-500" size={24} />
           </div>
-          
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
             <input 
               type="file" 
@@ -51,24 +90,14 @@ const TwoCode = () => {
               </p>
             </label>
           </div>
-          
-          {leftFile && (
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-md">
-              <div className="flex items-center">
-                <FileText className="text-blue-500 mr-2" size={16} />
-                <p className="text-blue-700 font-medium truncate">{leftFile.name}</p>
-              </div>
-            </div>
-          )}
         </div>
-        
 
+        {/* File Two Upload */}
         <div className="flex-1 bg-white rounded-lg shadow-md p-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-700">File Two</h2>
             <FileText className="text-green-500" size={24} />
           </div>
-          
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
             <input 
               type="file" 
@@ -86,24 +115,17 @@ const TwoCode = () => {
               </p>
             </label>
           </div>
-          
-          {rightFile && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-100 rounded-md">
-              <div className="flex items-center">
-                <FileText className="text-green-500 mr-2" size={16} />
-                <p className="text-green-700 font-medium truncate">{rightFile.name}</p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
-      
+
       <button 
         onClick={handleCopyStatus} 
         className="px-8 py-3 bg-indigo-600 hover:bg-indigo-800 text-white font-medium rounded-lg shadow-md flex items-center justify-center transition-colors mb-8"
-      >Copy Status
+        disabled={loading}
+      >
+        {loading ? "Analyzing..." : "Copy Status"}
       </button>
-      
+
       <div className="w-full bg-white rounded-lg shadow-md p-6 border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-700">Comparison Results</h2>
@@ -114,25 +136,39 @@ const TwoCode = () => {
             </div>
           )}
         </div>
-        
-        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 min-h-32 flex items-center justify-center">
-          {leftFile && rightFile ? (
-            <div className="w-full">
-              <div className="flex justify-between text-gray-600 mb-2 pb-2 border-b border-gray-200">
-                <span>Similarity Score</span>
-                <span>Pending Analysis</span>
+
+        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 min-h-32">
+          {error && <p className="text-red-500">{error}</p>}
+
+          {result ? (
+            <div className="space-y-3 text-gray-700">
+              <div className="flex justify-between border-b border-gray-200 pb-2">
+                <span>AST Similarity</span>
+                <span>{result.ast_similarity}%</span>
               </div>
-              <div className="flex justify-between text-gray-600 mb-2 pb-2 border-b border-gray-200">
-                <span>Differences Found</span>
-                <span>Pending Analysis</span>
+              <div className="flex justify-between border-b border-gray-200 pb-2">
+                <span>Token Similarity</span>
+                <span>{result.token_similarity}%</span>
               </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Processing Status</span>
-                <span className="text-amber-600">Ready to analyze</span>
+              <div className="flex justify-between border-b border-gray-200 pb-2">
+                <span>Final Similarity</span>
+                <span className="font-semibold">{result.final_similarity}%</span>
+              </div>
+              <div>
+                <span className="block font-medium mt-4 mb-2">Copied Sections:</span>
+                {result.copied_sections && result.copied_sections.length > 0 ? (
+                  <ul className="list-disc ml-5 text-sm text-gray-600 space-y-1 max-h-40 overflow-y-auto">
+                    {result.copied_sections.map((section, idx) => (
+                      <li key={idx}><code>{section}</code></li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500">No significant copied sections found.</p>
+                )}
               </div>
             </div>
           ) : (
-            <p className="text-gray-400">Results will appear here after uploading both files</p>
+            !error && <p className="text-gray-400">Results will appear here after analysis.</p>
           )}
         </div>
       </div>
