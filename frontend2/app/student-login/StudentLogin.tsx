@@ -1,16 +1,14 @@
 "use client"
-import { useState ,FormEvent } from 'react';
+import { useState, FormEvent } from 'react';
 import Link from 'next/link';
-// import { redirect } from 'next/navigation'
 import { useRouter } from 'next/navigation';
-
 
 export default function StudentLoginPage() {
   const [rollNo, setRollNo] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router=useRouter();
+  const router = useRouter();
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -21,9 +19,10 @@ export default function StudentLoginPage() {
     
     setError('');
     setLoading(true);
-    console.log(rollNo,password)
+    console.log(rollNo, password);
+    
     try {
-      const response=await fetch("http://localhost:5000/api/student-login", {
+      const response = await fetch("http://localhost:5000/api/student-login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -33,18 +32,25 @@ export default function StudentLoginPage() {
           pass: password
         })
       });
+      
       const data = await response.json();
       
       if (!response.ok) {
         throw new Error(data.message || 'Failed to login');
       }
       
-      if (data.message!=="Login successful") {
-        setError('Invalid roll number');
-        return;
-      }
-      else{
-        router.push("/student-dashboard");
+      if (data.message === "Login successful") {
+        // Store the student's roll number in localStorage
+        localStorage.setItem("Roll", rollNo);
+        
+        // If you have additional student information in the response, you can store that too
+        if (data.student) {
+          localStorage.setItem("StudentInfo", JSON.stringify(data.student));
+        }
+        
+        router.push("/dashboard/student");
+      } else {
+        setError('Invalid credentials');
       }
     } catch (err: unknown) {
       if (err instanceof Error) {

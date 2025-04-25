@@ -36,7 +36,8 @@ export default function TeacherLoginPage() {
       }
 
       console.log('Login successful!', data);
-      router.push('/teacher-dashboard');
+      localStorage.setItem('teacherid', rollNo); // 👈 store teacher ID
+      router.push('/dashboard/teacher');
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);

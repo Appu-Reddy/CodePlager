@@ -1,45 +1,124 @@
 "use client"
 
-import React, { useState} from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Upload, FileText, Edit, Send, Check, X, Clock, Award, BookOpen, Calendar } from 'lucide-react';
+import axios from 'axios';
 
 const StudentSubmit = () => {
   const searchParams = useSearchParams();
   const assignmentName = searchParams.get('name') || 'Assignment';
   const assignmentId = searchParams.get('id');
+  const courseId = searchParams.get('course');
+  
+  // Assuming you have the student's ID available from your auth context or localStorage
+  // This would come from your authentication system
+  const studentId = typeof window !== 'undefined' ? localStorage.getItem('Roll') : '';
 
   const [assignment, setAssignment] = useState({
     id: assignmentId,
     name: assignmentName,
+    course: courseId || '',
+    dueDate: null,
     submitted: false,
+    status: 'pending',
     grade: null,
     lastSubmission: null as string | null,
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showUploadSection, setShowUploadSection] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Fetch assignment data on component mount if we have an assignment ID
+  useEffect(() => {
+    if (assignmentId) {
+      fetchAssignmentData();
+    }
+  }, [assignmentId]);
+
+  const fetchAssignmentData = async () => {
+    try {
+      // This endpoint would need to be implemented on your backend
+      const response = await axios.get(`http://localhost:5000/api/assignments/${assignmentId}?studentId=${studentId}`);
+      
+      if (response.data) {
+        setAssignment({
+          ...response.data,
+          submitted: response.data.status === 'submitted' || response.data.status === 'graded',
+          lastSubmission: response.data.submissionDate ? new Date(response.data.submissionDate).toLocaleString() : null
+        });
+        
+        // Don't show upload section if already submitted and graded
+        if (response.data.status === 'graded') {
+          setShowUploadSection(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching assignment:', error);
+      // Handle error - could show a notification
+    }
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setSelectedFile(e.target.files[0]);
+      setSubmitError(null);
     }
   };
 
-  const handleSubmit = () => {
-    if (selectedFile) {
-      setAssignment(prev => ({
-        ...prev,
-        submitted: true,
-        lastSubmission: new Date().toLocaleString(),
-      }));
-      setSelectedFile(null);
-      setShowUploadSection(false);
+  const handleSubmit = async () => {
+    if (!selectedFile || !studentId) return;
+    
+    setIsSubmitting(true);
+    setSubmitError(null);
+    
+    // In a real implementation, you would upload the file to a storage service
+    // and get back a URL or reference, which you would include in the assignment data
+    
+    try {
+      const now = new Date();
+      
+      const assignmentData = {
+        id: assignment.id,
+        name: assignment.name,
+        course: assignment.course,
+        dueDate: assignment.dueDate || now, // You should have a proper due date
+        status: 'submitted',
+        submissionDate: now.toISOString(),
+        grade: null,
+        studentId: studentId
+      };
+      
+      // Call your API to save the assignment
+      const response = await axios.post('http://localhost:5000/api/uploadAssignment', assignmentData);
+      
+      if (response.status >= 200 && response.status < 300) {
+        // Update local state to reflect submission
+        setAssignment(prev => ({
+          ...prev,
+          submitted: true,
+          status: 'submitted',
+          lastSubmission: now.toLocaleString(),
+        }));
+        
+        setSelectedFile(null);
+        setShowUploadSection(false);
+      } else {
+        throw new Error('Failed to submit assignment');
+      }
+    } catch (error) {
+      console.error('Error submitting assignment:', error);
+      setSubmitError('Failed to submit assignment. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleEdit = () => {
     setShowUploadSection(true);
+    setSubmitError(null);
   };
 
   return (
@@ -121,12 +200,11 @@ const StudentSubmit = () => {
           </div>
         </div>
 
-
         <div className="px-6 pb-6">
           <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
             <div 
               className="bg-gradient-to-r from-blue-500 to-purple-500 h-full transition-all duration-500" 
-              style={{ width: assignment.submitted ? '33%' : '0%' }}
+              style={{ width: assignment.submitted ? (assignment.grade ? '100%' : '66%') : '33%' }}
             />
           </div>
           <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -136,7 +214,6 @@ const StudentSubmit = () => {
           </div>
         </div>
       </div>
-
 
       {showUploadSection && (
         <div className="mx-auto w-full max-w-3xl bg-black/40 backdrop-blur-sm rounded-xl p-8 shadow-xl border border-gray-800 animate-fadeIn">
@@ -179,24 +256,38 @@ const StudentSubmit = () => {
               </div>
             )}
 
+            {submitError && (
+              <div className="mt-4 p-3 bg-red-500/20 text-red-400 rounded-lg text-center">
+                {submitError}
+              </div>
+            )}
+
             <div className="mt-8 flex justify-center">
               <button 
                 className={`flex items-center justify-center space-x-2 py-3 px-8 rounded-lg text-lg font-medium transition-all duration-300 shadow-lg ${
-                  selectedFile 
+                  selectedFile && !isSubmitting
                     ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-blue-500/20' 
                     : 'bg-gray-800 text-gray-400 cursor-not-allowed'
                 }`}
                 onClick={handleSubmit}
-                disabled={!selectedFile}
+                disabled={!selectedFile || isSubmitting}
               >
-                <Send size={18} />
-                <span>{assignment.submitted ? "Update Submission" : "Submit Assignment"}</span>
+                {isSubmitting ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    <span>Submitting...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Send size={18} />
+                    <span>{assignment.submitted ? "Update Submission" : "Submit Assignment"}</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
-
 
       {!showUploadSection && assignment.submitted && (
         <div className="mx-auto w-full max-w-3xl bg-black/40 backdrop-blur-sm rounded-xl p-8 text-center shadow-lg border border-gray-800 animate-fadeIn">

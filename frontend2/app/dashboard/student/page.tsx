@@ -1,62 +1,47 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, BookOpen, ChevronRight, CheckCircle, AlertCircle, Award } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const StudentAssignmentsPage = () => {
   const router = useRouter();
-  
-  const [assignments, setAssignments] = useState([
-    {
-      id: "asg-001",
-      name: "Advanced Algorithms - Final Project",
-      course: "CS 410 - Advanced Algorithms",
-      dueDate: "2025-05-15T23:59:59",
-      status: "pending", // pending, submitted, graded, late
-      submissionDate: null,
-      grade: null
-    },
-    {
-      id: "asg-002",
-      name: "Database Systems - SQL Implementation",
-      course: "CS 315 - Database Systems",
-      dueDate: "2025-05-08T23:59:59", 
-      status: "submitted",
-      submissionDate: "2025-04-20T14:32:10",
-      grade: null
-    },
-    {
-      id: "asg-003",
-      name: "Machine Learning - Classification Models",
-      course: "CS 512 - Machine Learning",
-      dueDate: "2025-04-30T23:59:59",
-      status: "graded",
-      submissionDate: "2025-04-15T09:12:45",
-      grade: 92
-    },
-    {
-      id: "asg-004",
-      name: "Web Development - Final Project",
-      course: "CS 290 - Web Development",
-      dueDate: "2025-05-20T23:59:59",
-      status: "pending",
-      submissionDate: null,
-      grade: null
-    },
-    {
-      id: "asg-005",
-      name: "Operating Systems - Memory Management",
-      course: "CS 344 - Operating Systems",
-      dueDate: "2025-04-22T23:59:59",
-      status: "late",
-      submissionDate: null,
-      grade: null
-    }
-  ]);
-  
+  const [assignments, setAssignments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const formatDate = (dateString: string | number | Date) => {
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      try {
+        setIsLoading(true);
+        // Get the student's roll number from localStorage
+        const rollNo = localStorage.getItem("Roll")?.replace("Roll:", "") || "";
+        
+        if (!rollNo) {
+          throw new Error("Student roll number not found");
+        }
+
+        const response = await fetch(`http://localhost:5000/assignments/student/${rollNo}`);
+        
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        setAssignments(data);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch assignments:", err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAssignments();
+  }, []);
+
+  const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
@@ -67,8 +52,7 @@ const StudentAssignmentsPage = () => {
     });
   };
   
-
-  const getTimeRemaining = (dueDate: string | number | Date) => {
+  const getTimeRemaining = (dueDate) => {
     const now = new Date();
     const due = new Date(dueDate);
     const diffMs = due.getTime() - now.getTime();
@@ -86,10 +70,7 @@ const StudentAssignmentsPage = () => {
   };
   
   // Get status color and icon
-  const getStatusInfo = (assignment: {
-          id: string; name: string; course: string; dueDate: string; status: string;
-          submissionDate: null; grade: null;
-      } | { id: string; name: string; course: string; dueDate: string; status: string; submissionDate: string; grade: null; } | { id: string; name: string; course: string; dueDate: string; status: string; submissionDate: string; grade: number; }) => {
+  const getStatusInfo = (assignment) => {
     switch(assignment.status) {
       case 'submitted':
         return { 
@@ -125,6 +106,35 @@ const StudentAssignmentsPage = () => {
   const handleAssignmentClick = (assignment) => {
     router.push(`/assignment/submit?id=${assignment.id}&name=${encodeURIComponent(assignment.name)}`);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-gray-100 p-8 flex justify-center items-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-r-2 border-b-2 border-gray-800 mx-auto mb-4"></div>
+          <p className="text-gray-300">Loading assignments...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-gray-100 p-8 flex justify-center items-center">
+        <div className="bg-black/40 backdrop-blur-sm rounded-xl p-8 border border-red-500/50 max-w-md mx-auto text-center">
+          <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">Failed to load assignments</h2>
+          <p className="text-gray-300 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-gray-100 p-8">
@@ -143,94 +153,104 @@ const StudentAssignmentsPage = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {assignments.map((assignment) => {
-          const statusInfo = getStatusInfo(assignment);
-          
-          return (
-            <div 
-              key={assignment.id} 
-              className="bg-black/40 backdrop-blur-sm rounded-xl overflow-hidden border border-gray-800 shadow-lg hover:border-blue-600/50 transition-all duration-300 cursor-pointer"
-              onClick={() => handleAssignmentClick(assignment)}
-            >
-              <div className="p-6 flex flex-col h-full">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-white mb-1">{assignment.name}</h3>
-                    <p className="text-gray-400">{assignment.course}</p>
-                  </div>
-                  <div className={`px-3 py-1 rounded-full ${statusInfo.bgColor} ${statusInfo.color} flex items-center`}>
-                    {statusInfo.icon}
-                    <span className="ml-1 text-sm font-medium">{statusInfo.text}</span>
-                  </div>
-                </div>
-                
-                <div className="flex-grow">
-                  <div className="flex items-center text-gray-300 mb-2">
-                    <Clock size={16} className="mr-2 text-gray-400" />
-                    <span>Due: {formatDate(assignment.dueDate)}</span>
-                  </div>
-                  
-                  {assignment.submissionDate && (
-                    <div className="flex items-center text-gray-300">
-                      <CheckCircle size={16} className="mr-2 text-blue-400" />
-                      <span>Submitted: {formatDate(assignment.submissionDate)}</span>
+      {assignments.length === 0 ? (
+        <div className="bg-black/40 backdrop-blur-sm rounded-xl p-8 border border-gray-800 text-center">
+          <BookOpen size={48} className="text-gray-400 mx-auto mb-4 opacity-50" />
+          <h2 className="text-2xl font-bold text-white mb-2">No Assignments Found</h2>
+          <p className="text-gray-400">You don't have any assignments at the moment.</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {assignments.map((assignment) => {
+              const statusInfo = getStatusInfo(assignment);
+              
+              return (
+                <div 
+                  key={assignment.id || assignment._id}
+                  className="bg-black/40 backdrop-blur-sm rounded-xl overflow-hidden border border-gray-800 shadow-lg hover:border-blue-600/50 transition-all duration-300 cursor-pointer"
+                  onClick={() => handleAssignmentClick(assignment)}
+                >
+                  <div className="p-6 flex flex-col h-full">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-white mb-1">{assignment.name}</h3>
+                        <p className="text-gray-400">{assignment.course}</p>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full ${statusInfo.bgColor} ${statusInfo.color} flex items-center`}>
+                        {statusInfo.icon}
+                        <span className="ml-1 text-sm font-medium">{statusInfo.text}</span>
+                      </div>
                     </div>
-                  )}
-                </div>
-                
-                <div className="mt-6 flex justify-between items-center">
-                  <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                    <div 
-                      className={`h-full ${
-                        assignment.status === 'graded' ? 'bg-green-500' : 
-                        assignment.status === 'submitted' ? 'bg-blue-500' :
-                        assignment.status === 'late' ? 'bg-red-500' : 'bg-yellow-500'
-                      }`}
-                      style={{ 
-                        width: assignment.status === 'graded' ? '100%' : 
-                              assignment.status === 'submitted' ? '66%' : 
-                              assignment.status === 'pending' ? '33%' : '0%' 
-                      }}
-                    />
+                    
+                    <div className="flex-grow">
+                      <div className="flex items-center text-gray-300 mb-2">
+                        <Clock size={16} className="mr-2 text-gray-400" />
+                        <span>Due: {formatDate(assignment.dueDate)}</span>
+                      </div>
+                      
+                      {assignment.submissionDate && (
+                        <div className="flex items-center text-gray-300">
+                          <CheckCircle size={16} className="mr-2 text-blue-400" />
+                          <span>Submitted: {formatDate(assignment.submissionDate)}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="mt-6 flex justify-between items-center">
+                      <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                        <div 
+                          className={`h-full ${
+                            assignment.status === 'graded' ? 'bg-green-500' : 
+                            assignment.status === 'submitted' ? 'bg-blue-500' :
+                            assignment.status === 'late' ? 'bg-red-500' : 'bg-yellow-500'
+                          }`}
+                          style={{ 
+                            width: assignment.status === 'graded' ? '100%' : 
+                                  assignment.status === 'submitted' ? '66%' : 
+                                  assignment.status === 'pending' ? '33%' : '0%' 
+                          }}
+                        />
+                      </div>
+                      <ChevronRight size={20} className="text-blue-400 ml-4" />
+                    </div>
                   </div>
-                  <ChevronRight size={20} className="text-blue-400 ml-4" />
                 </div>
+              );
+            })}
+          </div>
+          
+          <div className="mt-8 bg-black/40 backdrop-blur-sm rounded-xl p-6 border border-gray-800 shadow-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 rounded-lg bg-black/60">
+                <p className="text-gray-400 text-sm mb-1">Total Assignments</p>
+                <p className="text-2xl font-bold text-white">{assignments.length}</p>
+              </div>
+              
+              <div className="p-4 rounded-lg bg-black/60">
+                <p className="text-gray-400 text-sm mb-1">Submitted</p>
+                <p className="text-2xl font-bold text-blue-400">
+                  {assignments.filter(a => a.status === 'submitted' || a.status === 'graded').length}
+                </p>
+              </div>
+              
+              <div className="p-4 rounded-lg bg-black/60">
+                <p className="text-gray-400 text-sm mb-1">Graded</p>
+                <p className="text-2xl font-bold text-green-400">
+                  {assignments.filter(a => a.status === 'graded').length}
+                </p>
+              </div>
+              
+              <div className="p-4 rounded-lg bg-black/60">
+                <p className="text-gray-400 text-sm mb-1">Pending</p>
+                <p className="text-2xl font-bold text-yellow-400">
+                  {assignments.filter(a => a.status === 'pending').length}
+                </p>
               </div>
             </div>
-          );
-        })}
-      </div>
-      
-      <div className="mt-8 bg-black/40 backdrop-blur-sm rounded-xl p-6 border border-gray-800 shadow-lg">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 rounded-lg bg-black/60">
-            <p className="text-gray-400 text-sm mb-1">Total Assignments</p>
-            <p className="text-2xl font-bold text-white">{assignments.length}</p>
           </div>
-          
-          <div className="p-4 rounded-lg bg-black/60">
-            <p className="text-gray-400 text-sm mb-1">Submitted</p>
-            <p className="text-2xl font-bold text-blue-400">
-              {assignments.filter(a => a.status === 'submitted' || a.status === 'graded').length}
-            </p>
-          </div>
-          
-          <div className="p-4 rounded-lg bg-black/60">
-            <p className="text-gray-400 text-sm mb-1">Graded</p>
-            <p className="text-2xl font-bold text-green-400">
-              {assignments.filter(a => a.status === 'graded').length}
-            </p>
-          </div>
-          
-          <div className="p-4 rounded-lg bg-black/60">
-            <p className="text-gray-400 text-sm mb-1">Pending</p>
-            <p className="text-2xl font-bold text-yellow-400">
-              {assignments.filter(a => a.status === 'pending').length}
-            </p>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };
