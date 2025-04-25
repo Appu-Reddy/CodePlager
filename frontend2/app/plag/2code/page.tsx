@@ -135,7 +135,7 @@ const TwoCode = () => {
     formData.append("file2", rightFile);
 
     try {
-      const res = await fetch("http://127.0.0.1:5000/compare", {
+      const res = await fetch("http://127.0.0.1:1234/compare", {
         method: "POST",
         body: formData
       });

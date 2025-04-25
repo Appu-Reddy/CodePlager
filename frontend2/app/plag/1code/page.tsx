@@ -60,13 +60,13 @@ export default function Home() {
         const formData = new FormData();
         formData.append('file', file);
         
-        response = await fetch('http://127.0.0.1:5000/detect', {
+        response = await fetch('http://127.0.0.1:1234/detect', {
           method: 'POST',
           body: formData
         });
       } else if (inputMethod === 'code' && code.trim()) {
         // Direct code input mode
-        response = await fetch('http://127.0.0.1:5000/detect', {
+        response = await fetch('http://127.0.0.1:1234/detect', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

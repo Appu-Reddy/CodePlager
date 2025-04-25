@@ -65,7 +65,7 @@ export default function Home() {
         });
       }, 500);
 
-      const response = await fetch('http://127.0.0.1:5000/detect-zip', {
+      const response = await fetch('http://127.0.0.1:1234/detect-zip', {
         method: 'POST',
         body: formData
       });
