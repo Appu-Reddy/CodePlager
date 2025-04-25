@@ -104,7 +104,8 @@ const StudentAssignmentsPage = () => {
   };
   
   const handleAssignmentClick = (assignment) => {
-    router.push(`/assignment/submit?id=${assignment.id}&name=${encodeURIComponent(assignment.name)}`);
+    // console.log(assignment._id)
+    router.push(`/assignment/submit?id=${assignment._id}&name=${encodeURIComponent(assignment.name)}`);
   };
 
   if (isLoading) {

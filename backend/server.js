@@ -129,12 +129,12 @@ const storage = multer.diskStorage({
         cb(null, uploadDir);  // use the ensured directory
     },
     filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + file.originalname;
-        cb(null, uniqueSuffix);
-    }
+        cb(null, Date.now() + '-' + file.originalname); // Save file with timestamp
+    },
 });
 
 const upload = multer({ storage });
+
 app.post('/api/createAssignment', upload.single('file'), async (req, res) => {
     try {
         const {
@@ -232,50 +232,102 @@ app.delete('/api/deleteAssignment/:id', async (req, res) => {
     }
 });
 
-app.post('/submitAssignment/:assignmentId', async (req, res) => {
-    const { studentRollNo, file, grade } = req.body; // Assuming file and other submission data is in req.body
+app.post('/submitAssignment', upload.single('submissionFile'), async (req, res) => {
+    const { assignmentId, studentRollNo, status = 'submitted' } = req.body;
+
+    // Validate if assignment exists
+    const assignment = await Assignment.findById(assignmentId);
+    if (!assignment) {
+        return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    // Validate that the assignment is not closed and the due date has not passed
+    if (assignment.status === 'closed' || new Date() > new Date(assignment.dueDate)) {
+        return res.status(400).json({ error: 'This assignment is no longer accepting submissions.' });
+    }
+
+    // Check if the student has already submitted the assignment
+    const existingSubmission = assignment.studentSubmissions.find(
+        (sub) => sub.studentRollNo === studentRollNo
+    );
+
+    // If the student has already submitted, we can either update or reject the new submission
+    if (existingSubmission && existingSubmission.status === 'submitted') {
+        return res.status(400).json({ error: 'You have already submitted this assignment.' });
+    }
+
+    const submission = {
+        studentRollNo,
+        status,
+        submittedAt: new Date(),
+    };
+
+    // If a file is uploaded, add it to the submission object
+    if (req.file) {
+        submission.submissionId = new mongoose.Types.ObjectId();
+        submission.fileName = req.file.filename;
+        submission.fileUrl = `/uploads/${req.file.filename}`; // Adjust to match your file serving logic
+        submission.fileType = req.file.mimetype;
+    }
+
+    // Update the studentSubmissions array with the new submission or modify existing one
+    assignment.studentSubmissions.push(submission);
 
     try {
-        // Find the assignment by its ID
-        const assignment = await Assignment.findById(req.params.assignmentId);
+        // Save the assignment with the new submission
+        await assignment.save();
+        res.status(200).json({ message: 'Assignment submitted successfully', submission });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Something went wrong while submitting the assignment' });
+    }
+});
 
+app.get('/api/assignments/:assignmentId', async (req, res) => {
+    const { assignmentId } = req.params;
+    const { studentId } = req.query;  // studentId here is the student roll number
+
+    if (!studentId) {
+        return res.status(400).json({ error: 'Student ID (Roll No) is required' });
+    }
+
+    try {
+        // First, validate the student's roll number
+        const student = await Student.findOne({ rollNo: studentId });
+        if (!student) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+
+        // Find the assignment by ID
+        const assignment = await Assignment.findById(assignmentId);
         if (!assignment) {
             return res.status(404).json({ error: 'Assignment not found' });
         }
 
-        // Check if student already submitted this assignment
-        const existingSubmission = assignment.studentSubmissions.find(sub => sub.studentRollNo === studentRollNo);
+        // Find the student's submission using the roll number
+        const studentSubmission = assignment.studentSubmissions.find(
+            (sub) => sub.studentRollNo === studentId
+        );
 
-        if (existingSubmission) {
-            return res.status(400).json({ error: 'Assignment already submitted' });
+        // Include the student's submission data if found
+        if (studentSubmission) {
+            return res.status(200).json({
+                assignment,
+                studentSubmission,
+                submissionDate: studentSubmission.submittedAt,
+                status: studentSubmission.status,
+            });
         }
 
-        // Create a new submission document
-        const newSubmission = new Submission({
-            studentRollNo,
-            file, // assuming file has URL, type, etc.
-            grade, // if graded
-            submittedAt: new Date(),
+        // If no submission found, return status 'not submitted'
+        return res.status(200).json({
+            assignment,
+            studentSubmission: null,
+            status: 'not submitted',
         });
-
-        await newSubmission.save();
-
-        // Add the submission to the studentSubmissions array
-        assignment.studentSubmissions.push({
-            studentRollNo,
-            submissionId: newSubmission._id,
-            submittedAt: new Date(),
-            status: 'submitted',
-            isGraded: false, // Not graded until evaluated by teacher
-        });
-
-        // Save the updated assignment document
-        await assignment.save();
-
-        res.status(200).json({ message: 'Assignment submitted successfully' });
-    } catch (err) {
-        console.error("Error submitting assignment:", err);
-        res.status(500).json({ error: 'Failed to submit assignment' });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'Error fetching assignment data' });
     }
 });
 
