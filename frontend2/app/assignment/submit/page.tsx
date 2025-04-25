@@ -139,7 +139,8 @@ const StudentSubmit = () => {
       formData.append('assignmentId', assignmentId);
       formData.append('studentRollNo', studentId);
       formData.append('status', 'submitted');
-      formData.append('studentName',studentName || "Uknown Student")
+      console.log(studentName)
+      formData.append('student_name',studentName || "Uknown Student")
 
       // Updated to match the backend API endpoint
       const response = await axios.post('http://localhost:5000/submitAssignment', formData, {

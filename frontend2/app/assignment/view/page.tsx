@@ -58,7 +58,7 @@ const TeacherDashboard = () => {
   const runPlagiarismCheck = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/run', {
+      const response = await fetch('http://localhost:4321/api/run', {
         method: 'POST',
       });
       const data = await response.json();

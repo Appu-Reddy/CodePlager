@@ -4,47 +4,35 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, BookOpen, CheckCircle, Plus, Edit, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-// type Assignment = {
-//   _id: string;
-//   name: string;
-//   course: string;
-//   description: string;
-//   dueDate: string;
-//   status: 'active' | 'draft' | 'closed';
-//   maxScore: number;
-//   attachments: Array<{
-//     fileName: string;
-//     fileUrl: string;
-//     fileType: string;
-//     _id: string;
-//     uploadDate: string;
-//   }>;
-//   teacherRollNo: string;
-//   studentSubmissions: Array<{
-//     studentRollNo: string;
-//     submissionId?: string;
-//     submittedAt: string;
-//     status: string;
-//     isGraded: boolean;
-//     grade: number | null;
-//     _id: string;
-//   }>;
-//   createdAt: string;
-//   updatedAt: string;
-//   __v: number;
-// };
+interface Assignment {
+  _id: string;
+  name: string;
+  course: string;
+  description: string;
+  dueDate: string;
+  status: 'active' | 'draft' | 'closed';
+  maxScore: number;
+  studentSubmissions: {
+    isGraded: boolean;
+    // other submission properties
+  }[];
+  // other properties
+}
 
 const TeacherAssignmentsPage = () => {
   const router = useRouter();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Replace with your actual teacher roll number or get it from auth context/session
-  const teacherRollNo = "23BD1A0555"; 
+  const teacherRollNo = localStorage.getItem("teacherid");
 
   useEffect(() => {
-    fetchAssignments();
+    // Only run on client-side where localStorage is available
+    if (typeof window !== 'undefined') {
+      fetchAssignments();
+    }
   }, []);
 
   const fetchAssignments = async () => {
@@ -52,13 +40,20 @@ const TeacherAssignmentsPage = () => {
     setError(null);
     
     try {
-      const response = await fetch(`http://localhost:5000/assignments/teacher/${teacherRollNo}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch assignments');
+      const teacherId = localStorage.getItem("teacherid");
+      if (!teacherId) {
+        throw new Error('Teacher ID not found in localStorage');
       }
       
+      console.log("Fetching assignments for teacher:", teacherId);
+      const response = await fetch(`http://localhost:5000/assignments/teacher/${teacherId}`);
+      
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch assignments');
+      }
+      
       setAssignments(data);
     } catch (err) {
       console.error('Error fetching assignments:', err);
@@ -67,19 +62,19 @@ const TeacherAssignmentsPage = () => {
       setIsLoading(false);
     }
   };
-
+  
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this assignment?')) return;
-    
+
     try {
       const response = await fetch(`http://localhost:5000/api/deleteAssignment/${id}`, {
         method: 'DELETE',
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to delete assignment');
       }
-      
+
       // Remove from UI state after successful API call
       setAssignments(assignments.filter(a => a._id !== id));
     } catch (err) {
@@ -171,7 +166,7 @@ const TeacherAssignmentsPage = () => {
         <div className="bg-black/40 backdrop-blur-sm rounded-xl p-8 border border-red-900 max-w-md w-full">
           <h2 className="text-xl font-bold text-red-400 mb-4">Error</h2>
           <p className="text-gray-300 mb-4">{error}</p>
-          <button 
+          <button
             onClick={fetchAssignments}
             className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-all duration-300"
           >
@@ -285,10 +280,10 @@ const TeacherAssignmentsPage = () => {
                       />
                     </div>
                     <div className="flex ml-4">
-                      <Edit 
-                        size={18} 
+                      <Edit
+                        size={18}
                         onClick={() => router.push(`/dashboard/teacher/edit-assignment/${assignment._id}`)}
-                        className="text-gray-400 hover:text-white mr-2 cursor-pointer" 
+                        className="text-gray-400 hover:text-white mr-2 cursor-pointer"
                       />
                       <Trash2
                         size={18}

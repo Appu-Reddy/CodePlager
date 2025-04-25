@@ -147,7 +147,7 @@ const tempStorage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const timestamp = Date.now();
-        const tempFileName = `temp_${timestamp}_${file.originalname}`;
+        const tempFileName =`temp_${timestamp}_${file.originalname}`;
         cb(null, tempFileName);
     }
 });
@@ -318,6 +318,7 @@ app.delete('/api/deleteAssignment/:id', async (req, res) => {
 app.post('/submitAssignment', upload.single('submissionFile'), async (req, res) => {
     try {
         const { student_name, assignmentId, studentRollNo, status = 'submitted' } = req.body;
+        console.log(student_name)
         
         if (req.file && student_name && studentRollNo) {
             const oldPath = path.join(uploadDir, req.file.filename);
