@@ -61,7 +61,7 @@ const CreateAssignmentPage = () => {
     
             const result = await res.json();
             alert('Assignment created successfully!');
-            router.push('/teacher/assignments');
+            router.push('/dashboard/teacher');
         } catch (error) {
             console.error('Error submitting form:', error);
             setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred');

@@ -16,6 +16,9 @@ const Teacher = require("./models/teacher")
 const Assignment = require("./models/assignment")
 const Submission = require("./models/submission")
 
+let studentN = ""
+let studentR = ""
+
 mongoose.connect("mongodb+srv://Vivek:Vivek2006@cluster0.fqmud7r.mongodb.net/");
 
 const db = mongoose.connection;
@@ -119,21 +122,37 @@ app.post('/api/teacher-login', async (req, res) => {
     res.status(200).json({ message: "Login successful", rollNo: teacher.rollNo });
 });
 
+
+app.get('/api/getStudent/:rollNo', async (req, res) => {
+    try {
+        const student = await Student.findOne({ rollNo: req.params.rollNo });
+        if (!student) {
+            return res.status(404).json({ error: "Student not found" });
+        }
+        res.json({ name: student.name });
+    } catch (err) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 const uploadDir = path.join(__dirname, 'uploads', 'assignments');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-const storage = multer.diskStorage({
+const tempStorage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, uploadDir);  // use the ensured directory
+        cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname); // Save file with timestamp
-    },
+        const timestamp = Date.now();
+        const tempFileName = `temp_${timestamp}_${file.originalname}`;
+        cb(null, tempFileName);
+    }
 });
 
-const upload = multer({ storage });
+const upload = multer({ storage: tempStorage });
 
 app.post('/api/createAssignment', upload.single('file'), async (req, res) => {
     try {
@@ -245,53 +264,105 @@ app.delete('/api/deleteAssignment/:id', async (req, res) => {
     }
 });
 
+// app.post('/submitAssignment', upload.single('submissionFile'), async (req, res) => {
+//     const { studentName, assignmentId, studentRollNo, status = 'submitted' } = req.body;
+
+//     // Validate if assignment exists
+//     const assignment = await Assignment.findById(assignmentId);
+//     if (!assignment) {
+//         return res.status(404).json({ error: 'Assignment not found' });
+//     }
+
+//     // Validate that the assignment is not closed and the due date has not passed
+//     if (assignment.status === 'closed' || new Date() > new Date(assignment.dueDate)) {
+//         return res.status(400).json({ error: 'This assignment is no longer accepting submissions.' });
+//     }
+
+//     // Check if the student has already submitted the assignment
+//     const existingSubmission = assignment.studentSubmissions.find(
+//         (sub) => sub.studentRollNo === studentRollNo
+//     );
+
+//     // If the student has already submitted, we can either update or reject the new submission
+//     if (existingSubmission && existingSubmission.status === 'submitted') {
+//         return res.status(400).json({ error: 'You have already submitted this assignment.' });
+//     }
+
+//     const submission = {
+//         studentRollNo,
+//         status,
+//         submittedAt: new Date(),
+//     };
+
+//     // If a file is uploaded, add it to the submission object
+//     if (req.file) {
+//         submission.submissionId = new mongoose.Types.ObjectId();
+//         submission.fileName = req.file.filename;
+//         submission.fileUrl = `/uploads/${req.file.filename}`; // Adjust to match your file serving logic
+//         submission.fileType = req.file.mimetype;
+//     }
+
+//     // Update the studentSubmissions array with the new submission or modify existing one
+//     assignment.studentSubmissions.push(submission);
+
+//     try {
+//         // Save the assignment with the new submission
+//         await assignment.save();
+//         res.status(200).json({ message: 'Assignment submitted successfully', submission });
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ error: 'Something went wrong while submitting the assignment' });
+//     }
+// });
+
 app.post('/submitAssignment', upload.single('submissionFile'), async (req, res) => {
-    const { assignmentId, studentRollNo, status = 'submitted' } = req.body;
-
-    // Validate if assignment exists
-    const assignment = await Assignment.findById(assignmentId);
-    if (!assignment) {
-        return res.status(404).json({ error: 'Assignment not found' });
-    }
-
-    // Validate that the assignment is not closed and the due date has not passed
-    if (assignment.status === 'closed' || new Date() > new Date(assignment.dueDate)) {
-        return res.status(400).json({ error: 'This assignment is no longer accepting submissions.' });
-    }
-
-    // Check if the student has already submitted the assignment
-    const existingSubmission = assignment.studentSubmissions.find(
-        (sub) => sub.studentRollNo === studentRollNo
-    );
-
-    // If the student has already submitted, we can either update or reject the new submission
-    if (existingSubmission && existingSubmission.status === 'submitted') {
-        return res.status(400).json({ error: 'You have already submitted this assignment.' });
-    }
-
-    const submission = {
-        studentRollNo,
-        status,
-        submittedAt: new Date(),
-    };
-
-    // If a file is uploaded, add it to the submission object
-    if (req.file) {
-        submission.submissionId = new mongoose.Types.ObjectId();
-        submission.fileName = req.file.filename;
-        submission.fileUrl = `/uploads/${req.file.filename}`; // Adjust to match your file serving logic
-        submission.fileType = req.file.mimetype;
-    }
-
-    // Update the studentSubmissions array with the new submission or modify existing one
-    assignment.studentSubmissions.push(submission);
-
     try {
-        // Save the assignment with the new submission
+        const { student_name, assignmentId, studentRollNo, status = 'submitted' } = req.body;
+        
+        if (req.file && student_name && studentRollNo) {
+            const oldPath = path.join(uploadDir, req.file.filename);
+            const newFileName = `${student_name}_${studentRollNo}_${req.file.originalname}`;
+            const newPath = path.join(uploadDir, newFileName);
+            
+            fs.renameSync(oldPath, newPath);
+            req.file.filename = newFileName;
+        }
+        
+        const assignment = await Assignment.findById(assignmentId);
+        if (!assignment) {
+            return res.status(404).json({ error: 'Assignment not found' });
+        }
+        
+        if (assignment.status === 'closed' || new Date() > new Date(assignment.dueDate)) {
+            return res.status(400).json({ error: 'This assignment is no longer accepting submissions.' });
+        }
+        
+        const existingSubmission = assignment.studentSubmissions.find(
+            (sub) => sub.studentRollNo === studentRollNo
+        );
+        
+        if (existingSubmission && existingSubmission.status === 'submitted') {
+            return res.status(400).json({ error: 'You have already submitted this assignment.' });
+        }
+
+        const submission = {
+            studentRollNo,
+            status,
+            submittedAt: new Date(),
+        };
+        
+        if (req.file) {
+            submission.submissionId = new mongoose.Types.ObjectId();
+            submission.fileName = req.file.filename;
+            submission.fileUrl = `/uploads/${req.file.filename}`;
+            submission.fileType = req.file.mimetype;
+        }
+
+        assignment.studentSubmissions.push(submission);
         await assignment.save();
+        
         res.status(200).json({ message: 'Assignment submitted successfully', submission });
     } catch (error) {
-        console.error(error);
         res.status(500).json({ error: 'Something went wrong while submitting the assignment' });
     }
 });

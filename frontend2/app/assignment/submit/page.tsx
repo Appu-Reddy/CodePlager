@@ -46,6 +46,24 @@ const StudentSubmit = () => {
   const [submitError, setSubmitError] = useState(null);
   const [isPastDue, setIsPastDue] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  const [studentName, setStudentName] = useState<string | null>(null);
+
+  
+  useEffect(() => {
+    console.log(assignmentId);
+  }, [assignmentId]);
+
+  useEffect(() => {
+    if (studentId) {
+      axios.get(`http://localhost:5000/api/getStudent/${studentId}`)
+        .then((res) => {
+          setStudentName(res.data.name);
+        })
+        .catch(() => {
+          setStudentName("Unknown Student");
+        });
+    }
+  }, [studentId]);
 
   // Fetch assignment data on component mount if we have an assignment ID
   useEffect(() => {
@@ -121,6 +139,7 @@ const StudentSubmit = () => {
       formData.append('assignmentId', assignmentId);
       formData.append('studentRollNo', studentId);
       formData.append('status', 'submitted');
+      formData.append('studentName',studentName || "Uknown Student")
 
       // Updated to match the backend API endpoint
       const response = await axios.post('http://localhost:5000/submitAssignment', formData, {
