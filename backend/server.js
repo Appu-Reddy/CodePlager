@@ -181,23 +181,22 @@ app.get('/assignments/student/:rollNo', async (req, res) => {
     try {
         const assignments = await Assignment.find().sort({ createdAt: -1 });
 
-        const submissions = await Submission.find({ studentRollNo: rollNo });
-
         const assignmentWithStatus = assignments.map(assign => {
-            const submitted = submissions.find(s => String(s.assignmentId) === String(assign._id));
+            // Find the student's submission in the assignment's studentSubmissions array
+            const submission = assign.studentSubmissions?.find(sub => sub.studentRollNo === rollNo);
 
             let status = 'pending';
             let grade = null;
             let submissionDate = null;
 
-            if (submitted) {
-                submissionDate = submitted.submittedAt;
+            if (submission) {
+                submissionDate = submission.submittedAt;
 
-                if (submitted.grade !== undefined && submitted.grade !== null) {
+                if (submission.grade !== undefined && submission.grade !== null) {
                     status = 'graded';
-                    grade = submitted.grade;
+                    grade = submission.grade;
                 } else {
-                    status = new Date(assign.dueDate) < new Date(submitted.submittedAt) ? 'late' : 'submitted';
+                    status = new Date(assign.dueDate) < new Date(submission.submittedAt) ? 'late' : 'submitted';
                 }
             } else if (new Date(assign.dueDate) < new Date()) {
                 status = 'late';
@@ -221,6 +220,20 @@ app.get('/assignments/student/:rollNo', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch student assignments' });
     }
 });
+
+app.get('/assignments/teacher/:rollNo', async (req, res) => {
+    const { rollNo } = req.params;
+
+    try {
+        const assignments = await Assignment.find({ teacherRollNo: rollNo }).sort({ createdAt: -1 });
+
+        res.status(200).json(assignments);
+    } catch (err) {
+        console.error("Error fetching assignments by teacher:", err);
+        res.status(500).json({ error: 'Failed to fetch teacher assignments' });
+    }
+});
+
 
 app.delete('/api/deleteAssignment/:id', async (req, res) => {
     try {

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, BookOpen, ChevronRight, CheckCircle, AlertCircle, Award } from 'lucide-react';
+import { Calendar, Clock, BookOpen, ChevronRight, CheckCircle, AlertCircle, Award, CornerDownLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const StudentAssignmentsPage = () => {
@@ -22,12 +22,14 @@ const StudentAssignmentsPage = () => {
         }
 
         const response = await fetch(`http://localhost:5000/assignments/student/${rollNo}`);
+        // console.log(response.status)
         
         if (!response.ok) {
           throw new Error(`Error: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log(data)
         setAssignments(data);
         setError(null);
       } catch (err) {
@@ -88,10 +90,17 @@ const StudentAssignmentsPage = () => {
         };
       case 'late':
         return { 
-          color: 'text-red-400',
-          bgColor: 'bg-red-500/20',
+          color: 'text-orange-400',
+          bgColor: 'bg-orange-500/20',
           icon: <AlertCircle size={18} />,
-          text: 'Past Due'
+          text: 'Submitted Late'
+        };
+      case 'returned':
+        return { 
+          color: 'text-purple-400',
+          bgColor: 'bg-purple-500/20',
+          icon: <CornerDownLeft size={18} />,
+          text: 'Returned'
         };
       default:
         return { 
@@ -103,8 +112,39 @@ const StudentAssignmentsPage = () => {
     }
   };
   
+  // Get progress percentage based on assignment status
+  const getProgressPercentage = (status) => {
+    switch(status) {
+      case 'submitted':
+        return '50%';
+      case 'late':
+        return '50%';
+      case 'graded':
+        return '75%';
+      case 'returned':
+        return '100%';
+      default:
+        return '25%';
+    }
+  };
+
+  // Get progress bar color based on assignment status
+  const getProgressColor = (status) => {
+    switch(status) {
+      case 'submitted':
+        return 'bg-blue-500';
+      case 'late':
+        return 'bg-orange-500';
+      case 'graded':
+        return 'bg-green-500';
+      case 'returned':
+        return 'bg-purple-500';
+      default:
+        return 'bg-yellow-500';
+    }
+  };
+  
   const handleAssignmentClick = (assignment) => {
-    // console.log(assignment._id)
     router.push(`/assignment/submit?id=${assignment._id}&name=${encodeURIComponent(assignment.name)}`);
   };
 
@@ -201,16 +241,8 @@ const StudentAssignmentsPage = () => {
                     <div className="mt-6 flex justify-between items-center">
                       <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
                         <div 
-                          className={`h-full ${
-                            assignment.status === 'graded' ? 'bg-green-500' : 
-                            assignment.status === 'submitted' ? 'bg-blue-500' :
-                            assignment.status === 'late' ? 'bg-red-500' : 'bg-yellow-500'
-                          }`}
-                          style={{ 
-                            width: assignment.status === 'graded' ? '100%' : 
-                                  assignment.status === 'submitted' ? '66%' : 
-                                  assignment.status === 'pending' ? '33%' : '0%' 
-                          }}
+                          className={`h-full ${getProgressColor(assignment.status)}`}
+                          style={{ width: getProgressPercentage(assignment.status) }}
                         />
                       </div>
                       <ChevronRight size={20} className="text-blue-400 ml-4" />
@@ -231,21 +263,21 @@ const StudentAssignmentsPage = () => {
               <div className="p-4 rounded-lg bg-black/60">
                 <p className="text-gray-400 text-sm mb-1">Submitted</p>
                 <p className="text-2xl font-bold text-blue-400">
-                  {assignments.filter(a => a.status === 'submitted' || a.status === 'graded').length}
+                  {assignments.filter(a => a.status === 'submitted' || a.status === 'late' || a.status === 'graded' || a.status === 'returned').length}
                 </p>
               </div>
               
               <div className="p-4 rounded-lg bg-black/60">
                 <p className="text-gray-400 text-sm mb-1">Graded</p>
                 <p className="text-2xl font-bold text-green-400">
-                  {assignments.filter(a => a.status === 'graded').length}
+                  {assignments.filter(a => a.status === 'graded' || a.status === 'returned').length}
                 </p>
               </div>
               
               <div className="p-4 rounded-lg bg-black/60">
                 <p className="text-gray-400 text-sm mb-1">Pending</p>
                 <p className="text-2xl font-bold text-yellow-400">
-                  {assignments.filter(a => a.status === 'pending').length}
+                  {assignments.filter(a => !['submitted', 'late', 'graded', 'returned'].includes(a.status)).length}
                 </p>
               </div>
             </div>
