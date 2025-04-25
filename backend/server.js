@@ -185,7 +185,7 @@ app.post('/api/createAssignment', upload.single('file'), async (req, res) => {
         });
 
         await newAssignment.save();
-        console.log("Assignment created");
+        // console.log("Assignment created");
 
         res.status(201).json({ message: 'Assignment created', assignment: newAssignment });
     } catch (err) {
@@ -318,7 +318,7 @@ app.delete('/api/deleteAssignment/:id', async (req, res) => {
 app.post('/submitAssignment', upload.single('submissionFile'), async (req, res) => {
     try {
         const { student_name, assignmentId, studentRollNo, status = 'submitted' } = req.body;
-        console.log(student_name)
+        // console.log(student_name)
         
         if (req.file && student_name && studentRollNo) {
             const oldPath = path.join(uploadDir, req.file.filename);

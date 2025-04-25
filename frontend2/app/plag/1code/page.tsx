@@ -106,14 +106,14 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-black text-gray-900 dark:text-white">
       <Head>
         <title>Code Analyzer</title>
         <meta name="description" content="Analyze your code for AI-generated content" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <header className="border-b dark:border-gray-700 bg-white dark:bg-gray-800 shadow">
+      <header className="border-b dark:border-gray-700 bg-white dark:bg-gray-950 shadow">
         <div className="container mx-auto p-4">
           <h1 className="text-2xl font-bold">Code Analyzer</h1>
         </div>
@@ -122,7 +122,7 @@ export default function Home() {
       <main className="container mx-auto p-4 flex-1">
         <div className="max-w-3xl mx-auto">
           {/* Analysis form */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+          <div className="bg-white dark:bg-gray-950 rounded-lg shadow-md p-6 mb-6">
             <h2 className="text-xl font-semibold mb-4">Submit Code for Analysis</h2>
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
@@ -132,14 +132,14 @@ export default function Home() {
                 <div className="flex space-x-2">
                   <button
                     type="button"
-                    className={`px-4 py-2 rounded transition-colors ${inputMethod === 'code' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                    className={`px-4 py-2 rounded transition duration-300 hover:scale-105 cursor-pointer ${inputMethod === 'code' ? 'bg-blue-700 text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
                     onClick={setCodeInputMethod}
                   >
                     Paste Code
                   </button>
                   <button
                     type="button"
-                    className={`px-4 py-2 rounded transition-colors ${inputMethod === 'file' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                    className={`px-4 py-2 rounded transition duration-300 hover:scale-105 cursor-pointer ${inputMethod === 'file' ? 'bg-blue-700 text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
                     onClick={setFileInputMethod}
                   >
                     Upload File
@@ -193,10 +193,10 @@ export default function Home() {
                 <button
                   type="submit"
                   disabled={isLoading || (inputMethod === 'code' && !code.trim()) || (inputMethod === 'file' && !file)}
-                  className={`flex-1 py-2 px-4 rounded font-medium transition-colors ${
+                  className={`flex-1 py-2 px-4 rounded font-medium transition-colors cursor-pointer ${
                     isLoading || (inputMethod === 'code' && !code.trim()) || (inputMethod === 'file' && !file)
                       ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
-                      : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      : 'bg-blue-700 hover:bg-blue-600 text-white'
                   }`}
                 >
                   {isLoading ? (
@@ -212,7 +212,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={clearForm}
-                  className="py-2 px-4 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  className="py-2 px-4 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors cursor-pointer"
                 >
                   Clear
                 </button>

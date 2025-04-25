@@ -7,13 +7,14 @@ import { Search, Clock, Award, Code, User, Percent, RefreshCw } from 'lucide-rea
 const TeacherDashboard = () => {
   const [searchtxt, setsearchtxt] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('percentage');
+  const [sortBy, setSortBy] = useState('ai_prob');
   interface Student {
     id: string;
     name: string;
-    percentage: number;
+    ai_prob: number;
     submittime: string;
     code: string;
+    filename: string;
   }
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -41,9 +42,10 @@ const TeacherDashboard = () => {
         return {
           id: submission.id,
           name: submission.name,
-          percentage: Math.floor(Math.random() * 20),
+          ai_prob: Math.floor(Math.random() * 100) / 100, // Initial placeholder value
           submittime: new Date().toISOString(),
-          code: submission.filename
+          code: submission.filename,
+          filename: submission.filename
         };
       });
       
@@ -71,10 +73,99 @@ const TeacherDashboard = () => {
     }
   };
 
+  const handleStudentClick = async (code: string, studentName: string, studentId: string) => {
+    // try {
+    //   // Construct the filename pattern
+    //   const fileName = `${studentName}_${studentId}_${code}`;
+    //   console.log("file name: ", fileName);
+      
+    //   // Make a request to download the file
+    //   const response = await fetch(`http://localhost:4321/api/download?file=${encodeURIComponent(fileName)}`);
+      
+    //   if (!response.ok) {
+    //     throw new Error('Failed to download file');
+    //   }
+      
+    //   // Get file content as blob
+    //   const blob = await response.blob();
+      
+    //   // Create FormData and append the file
+    //   const formData = new FormData();
+    //   formData.append('file', blob, code);
+      
+    //   // Send the file to the /detect endpoint
+    //   const ai_res = await fetch('http://localhost:4321/detect', {
+    //     method: 'POST',
+    //     body: formData
+    //   });
+      
+    //   if (!ai_res.ok) {
+    //     throw new Error('Failed to get AI detection result');
+    //   }
+      
+    //   const ai_data = await ai_res.json();
+    //   console.log("AI detection result:", ai_data);
+      
+    //   // Update the student's AI probability
+    //   setStudents(prevStudents => 
+    //     prevStudents.map(student => 
+    //       student.id === studentId 
+    //         ? { ...student, ai_prob: ai_data.detection_result.ai_prob } 
+    //         : student
+    //     )
+    //   );
+      
+    //   // Create a download link and trigger download
+    //   const downloadUrl = window.URL.createObjectURL(blob);
+    //   const link = document.createElement('a');
+    //   link.href = downloadUrl;
+    //   link.download = code;
+    //   document.body.appendChild(link);
+    //   link.click();
+    //   link.remove();
+      
+    //   // Clean up the URL object
+    //   window.URL.revokeObjectURL(downloadUrl);
+    // } catch (error) {
+    //   console.error('Error processing file:', error);
+    //   alert(`Error processing file: ${error.message}`);
+    // }
+    try {
+      // Construct the filename pattern
+      const fileName = `${studentName}_${studentId}_${code}`;
+      console.log("file name: ",fileName)
+      
+      // Make a request to download the file
+      const response = await fetch(`http://localhost:4321/api/download?file=${encodeURIComponent(fileName)}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to download file');
+      }
+      
+      // Get file content as blob
+      const blob = await response.blob();
+      
+      // Create a download link and trigger download
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = code; // Use original filename for download
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      // Clean up the URL object
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      alert(`Error downloading file: ${error.message}`);
+    }
+  };
+
   const filteredStudents = students
     .filter(student => {
-      if (filterStatus === 'low') return student.percentage < 10;
-      if (filterStatus === 'high') return student.percentage >= 10;
+      if (filterStatus === 'low') return student.ai_prob < 0.3;
+      if (filterStatus === 'high') return student.ai_prob >= 0.3;
       return true;
     })
     .filter(student => 
@@ -82,7 +173,7 @@ const TeacherDashboard = () => {
       student.id.toLowerCase().includes(searchtxt.toLowerCase())
     )
     .sort((a, b) => {
-      if (sortBy === 'percentage') return a.percentage - b.percentage;
+      if (sortBy === 'ai_prob') return b.ai_prob - a.ai_prob;
       if (sortBy === 'time') {
         return new Date(a.submittime).getTime() - new Date(b.submittime).getTime();
       }
@@ -91,7 +182,7 @@ const TeacherDashboard = () => {
 
   const leaderboardStudents = [...students]
     .sort((a, b) => {
-      if (a.percentage !== b.percentage) return a.percentage - b.percentage;
+      if (a.ai_prob !== b.ai_prob) return a.ai_prob - b.ai_prob;
       return new Date(a.submittime).getTime() - new Date(b.submittime).getTime();
     })
     .slice(0, 5);
@@ -99,10 +190,6 @@ const TeacherDashboard = () => {
   const formatTime = (dateTimeStr: string | number | Date) => {
     const date = new Date(dateTimeStr);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const handleStudentClick = (code: string) => {
-    alert(`Navigating to student code: ${code}`);
   };
 
   return (
@@ -128,18 +215,18 @@ const TeacherDashboard = () => {
                 </div>
                 <span className="text-2xl font-bold">
                   {students.length > 0 
-                    ? Math.round(students.reduce((acc, student) => acc + student.percentage, 0) / students.length)
+                    ? Math.round((students.reduce((acc, student) => acc + student.ai_prob, 0) / students.length) * 100)
                     : 0}%
                 </span>
-                <span className="text-gray-400 mt-2">Avg Copy Percentage</span>
+                <span className="text-gray-400 mt-2">Avg AI Probability</span>
               </div>
               
               <div className="bg-black p-4 rounded-lg flex flex-col items-center justify-center">
                 <div className="bg-purple-500 p-3 rounded-full mb-3">
                   <Code size={24} />
                 </div>
-                <span className="text-2xl font-bold">{students.filter(s => s.percentage < 5).length}</span>
-                <span className="text-gray-400 mt-2">Original Submissions</span>
+                <span className="text-2xl font-bold">{students.filter(s => s.ai_prob < 0.2).length}</span>
+                <span className="text-gray-400 mt-2">Human-written Submissions</span>
               </div>
             </div>
           </div>
@@ -197,12 +284,13 @@ const TeacherDashboard = () => {
             )}
 
             <div className="overflow-x-auto">
+              <p className='font-semibold text-yellow-400 text-lg'>click on the student name to download the student response</p>
               <table className="w-full">
                 <thead className="text-left bg-black">
                   <tr className='text-[19px]'>
                     <th className="p-3">Student Name</th>
                     <th className="p-3">Student ID</th>
-                    <th className="p-3">Copy %</th>
+                    <th className="p-3">AI Probability</th>
                     <th className="p-3">Submitted Time</th>
                   </tr>
                 </thead>
@@ -219,18 +307,18 @@ const TeacherDashboard = () => {
                     filteredStudents.map((student, index) => (
                       <tr 
                         key={student.id} 
-                        className={`hover:text-[17px] transition duration-500 cursor-pointer ${index % 2 === 0 ? 'bg-gray-750' : 'bg-black'}`}
-                        onClick={() => handleStudentClick(student.code)}
+                        className={`transition duration-500 cursor-pointer ${index % 2 === 0 ? 'bg-gray-750' : 'bg-black'}`}
+                        onClick={() => handleStudentClick(student.code, student.name, student.id)}
                       >
-                        <td className="p-3">{student.name}</td>
+                        <td className="p-3 transition duration hover:text-[105%] hover:font-semibold hover:text-blue-600 hover:underline cursor-pointer ">{student.name}</td>
                         <td className="p-3">{student.id}</td>
                         <td className="p-3">
                           <span className={`inline-block px-2 py-1 rounded ${
-                            student.percentage < 5 ? 'bg-green-900 text-green-300' : 
-                            student.percentage < 10 ? 'bg-yellow-900 text-yellow-300' : 
+                            student.ai_prob < 0.2 ? 'bg-green-900 text-green-300' : 
+                            student.ai_prob < 0.4 ? 'bg-yellow-900 text-yellow-300' : 
                             'bg-red-900 text-red-300'
                           }`}>
-                            {student.percentage}%
+                            {(student.ai_prob * 100).toFixed(1)}%
                           </span>
                         </td>
                         <td className="p-3">{formatTime(student.submittime)}</td>
@@ -249,7 +337,7 @@ const TeacherDashboard = () => {
               <h2 className="text-2xl font-bold mb-4">Filters</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-400 mb-2">Copy Percentage :</label>
+                  <label className="block text-gray-400 mb-2">AI Probability:</label>
                   <div className="flex space-x-2">
                     <button 
                       className={`px-4 py-2 rounded ${filterStatus === 'all' ? 'bg-blue-600' : 'bg-black'}`}
@@ -259,24 +347,24 @@ const TeacherDashboard = () => {
                     <button 
                       className={`px-4 py-2 rounded ${filterStatus === 'low' ? 'bg-blue-600' : 'bg-black'}`}
                       onClick={() => setFilterStatus('low')}
-                    >Low (&lt;10%)
+                    >Low (&lt;30%)
                     </button>
                     <button 
                       className={`px-4 py-2 rounded ${filterStatus === 'high' ? 'bg-blue-600' : 'bg-black'}`}
                       onClick={() => setFilterStatus('high')}
-                    >High (≥10%)
+                    >High (≥30%)
                     </button>
                   </div>
                 </div>
                 
                 <div>
-                  <label className="block text-gray-400 mb-2">Sort By : </label>
+                  <label className="block text-gray-400 mb-2">Sort By:</label>
                   <div className="flex space-x-2">
                     <button 
-                      className={`px-4 py-2 rounded flex items-center ${sortBy === 'percentage' ? 'bg-blue-600' : 'bg-black'}`}
-                      onClick={() => setSortBy('percentage')}
+                      className={`px-4 py-2 rounded flex items-center ${sortBy === 'ai_prob' ? 'bg-blue-600' : 'bg-black'}`}
+                      onClick={() => setSortBy('ai_prob')}
                     ><Percent size={16} className="mr-1" />
-                      Percentage
+                      AI Probability
                     </button>
                     <button 
                       className={`px-4 py-2 rounded flex items-center ${sortBy === 'time' ? 'bg-blue-600' : 'bg-black'}`}
@@ -294,14 +382,14 @@ const TeacherDashboard = () => {
                 <Award className="text-yellow-500 mr-2" size={24} />
                 <h2 className="text-xl font-bold">Leaderboard</h2>
               </div>
-              <p className="text-gray-400 text-sm mb-4">Top students with lowest copy percentage and fastest submissions</p>
+              <p className="text-gray-400 text-sm mb-4">Top students with lowest AI probability and fastest submissions</p>
               
               <div className="space-y-3">
                 {leaderboardStudents.map((student, index) => (
                   <div 
                     key={student.id}
                     className="bg-black rounded-lg p-4 cursor-pointer hover:bg-gray-600 transition"
-                    onClick={() => handleStudentClick(student.code)}
+                    onClick={() => handleStudentClick(student.code, student.name, student.id)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
@@ -315,11 +403,11 @@ const TeacherDashboard = () => {
                       </div>
                       <div className="text-right">
                         <div className={`font-bold ${
-                          student.percentage < 5 ? 'text-green-400' : 
-                          student.percentage < 10 ? 'text-yellow-400' : 
+                          student.ai_prob < 0.2 ? 'text-green-400' : 
+                          student.ai_prob < 0.4 ? 'text-yellow-400' : 
                           'text-red-400'
                         }`}>
-                          {student.percentage}%
+                          {(student.ai_prob * 100).toFixed(1)}%
                         </div>
                         <div className="text-gray-400 text-sm">{formatTime(student.submittime)}</div>
                       </div>

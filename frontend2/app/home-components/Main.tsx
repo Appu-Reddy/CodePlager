@@ -78,11 +78,11 @@ export default function Main() {
                 Advanced code plagiarism detection for educational institutions, coding bootcamps, and online learning platforms.
               </p>
               <div className="mt-8 flex justify-center space-x-4">
-                <Link href="/signup" className="px-8 py-3 text-base font-medium rounded-lg text-white bg-gradient-to-r from-green-600 to-green-800 hover:from-green-700 hover:to-green-900 md:py-4 md:text-lg md:px-10 shadow-md hover:shadow-lg transition-all">
+                <Link href="/student-login" className="px-8 py-3 text-base font-medium rounded-lg text-white bg-gradient-to-r from-green-600 to-green-800 hover:from-green-700 hover:to-green-900 md:py-4 md:text-lg md:px-10 shadow-md hover:shadow-lg transition-all">
                   Get Started
                 </Link>
-                <Link href="/demo" className="px-8 py-3 border border-green-400 text-base font-medium rounded-lg text-green-400 bg-transparent hover:bg-gray-800 md:py-4 md:text-lg md:px-10 transition-colors">
-                  Live Demo
+                <Link href="/plag/guest" className="px-8 py-3 border border-green-400 text-base font-medium rounded-lg text-green-400 bg-transparent hover:bg-gray-800 md:py-4 md:text-lg md:px-10 transition-colors">
+                  Try Guest
                 </Link>
               </div>
             </div>

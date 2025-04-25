@@ -102,14 +102,14 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-black text-gray-900 dark:text-white">
       <Head>
         <title>Code Analyzer</title>
         <meta name="description" content="Analyze your code for AI-generated content" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <header className="border-b dark:border-gray-700 bg-white dark:bg-gray-800 shadow">
+      <header className="border-b dark:border-gray-700 bg-white dark:bg-gray-950 shadow">
         <div className="container mx-auto p-4">
           <h1 className="text-2xl font-bold">Code Analyzer</h1>
         </div>
@@ -117,7 +117,7 @@ export default function Home() {
 
       <main className="container mx-auto p-4 flex-1">
         <div className="max-w-3xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+          <div className="bg-white dark:bg-gray-950 rounded-lg shadow-md p-6 mb-6">
             <h2 className="text-xl font-semibold mb-4">Upload ZIP File for Analysis</h2>
             <form onSubmit={handleSubmit}>
               <div className="mb-6">
